@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+
+{% block title %}Главная - Анализатор расходов{% endblock %}
+
+{% block content %}
+<h2>📊 Общая статистика</h2>
+
+<div class="stats-grid">
+    <div class="stat-card">
+        <h3>Всего записей</h3>
+        <div class="value">{{ stats.total_records }}</div>
+    </div>
+    <div class="stat-card">
+        <h3>Общая сумма</h3>
+        <div class="value">{{ "%.2f"|format(stats.total_amount) }} ₽</div>
+    </div>
+    <div class="stat-card">
+        <h3>Категорий</h3>
+        <div class="value">{{ stats.total_categories }}</div>
+    </div>
+    {% if stats.min_date %}
+    <div class="stat-card">
+        <h3>Период</h3>
+        <div class="value" style="font-size: 16px;">
+            {{ stats.min_date[:10] }}<br>
+            {{ stats.max_date[:10] }}
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<div class="filter-form">
+    <form method="get" action="{{ url_for('filter_expenses') }}">
+        <label>Фильтр по периоду:</label>
+        <input type="number" name="year" placeholder="Год" value="{{ request.args.get('year', '') }}">
+        <select name="month">
+            <option value="">Все месяцы</option>
+            {% for i in range(1, 13) %}
+            <option value="{{ i }}" {% if request.args.get('month')|int == i %}selected{% endif %}>
+                {{ month_names[i-1] }}
+            </option>
+            {% endfor %}
+        </select>
+        <button type="submit">Применить</button>
+        <a href="{{ url_for('index') }}" style="text-decoration: none;">
+            <button type="button">Сбросить</button>
+        </a>
+    </form>
+</div>
+
+{% if table_data %}
+    <h3>{% if title %}{{ title }}{% else %}Все расходы{% endif %}</h3>
+    <div class="total">💰 Общая сумма: {{ "%.2f"|format(total_filtered) }} ₽</div>
+    
+    <table>
+        <thead>
+            <tr>
+                <th>Категория</th>
+                <th style="text-align: right">Сумма (₽)</th>
+                <th style="text-align: right">Доля (%)</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in table_data %}
+            <tr>
+                <td>{{ row.category }}</td>
+                <td style="text-align: right">{{ "%.2f"|format(row.amount) }}</td>
+                <td style="text-align: right">{{ "%.1f"|format(row.percentage) }}%</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% else %}
+    <div class="alert alert-info">
+        Нет данных для отображения. 
+        {% if not stats.data_exists %}
+        Загрузите файл Excel с расходами через раздел "Загрузить".
+        {% else %}
+        Попробуйте изменить параметры фильтра.
+        {% endif %}
+    </div>
+{% endif %}
+{% endblock %}

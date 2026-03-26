@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+
+{% block title %}Загрузка файла{% endblock %}
+
+{% block content %}
+<h2>📤 Загрузка файла с расходами</h2>
+
+<div class="filter-form">
+    <form method="post" enctype="multipart/form-data" action="{{ url_for('upload_file') }}">
+        <div style="margin: 20px 0;">
+            <label style="display: block; margin-bottom: 10px; font-weight: bold;">
+                Выберите файл Excel (.xls или .xlsx):
+            </label>
+            <input type="file" name="file" accept=".xls,.xlsx" required style="padding: 10px;">
+        </div>
+        
+        <div style="margin: 20px 0;">
+            <p style="color: #6c757d; font-size: 14px;">
+                <strong>Требования к файлу:</strong><br>
+                - Файл должен содержать лист "Report"<br>
+                - Обязательные колонки: DateTime, Category, Value, Description<br>
+                - DateTime в формате ГГГГ-ММ-ДД ЧЧ:ММ:СС<br>
+                - Value - числовое значение (расходы с минусом)
+            </p>
+        </div>
+        
+        <button type="submit">Загрузить и сохранить</button>
+        <a href="{{ url_for('index') }}">
+            <button type="button">Отмена</button>
+        </a>
+    </form>
+</div>
+
+{% if stats and stats.data_exists %}
+<div class="stats-grid">
+    <div class="stat-card">
+        <h3>Текущие данные</h3>
+        <div class="value">{{ stats.total_records }} записей</div>
+        <div style="margin-top: 10px; font-size: 14px;">
+            {{ "%.2f"|format(stats.total_amount) }} ₽
+        </div>
+    </div>
+</div>
+
+<div class="alert alert-info">
+    ⚠️ Внимание! При загрузке нового файла старые данные будут удалены.
+</div>
+{% endif %}
+{% endblock %}
