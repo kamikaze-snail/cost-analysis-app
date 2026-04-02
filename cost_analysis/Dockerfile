@@ -7,7 +7,7 @@ ARG VERSION=unknown
 ENV APP_VERSION=$VERSION
 
 # Копируем зависимости
-COPY /app/requirements.txt .
+COPY app/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Копируем приложение
@@ -20,5 +20,5 @@ USER appuser
 
 EXPOSE 5000
 
-# Передаем версию в приложение
-CMD ["sh", "-c", "python -c 'import app.app; app.app.app.config[\"VERSION\"] = \"$APP_VERSION\"; app.app.app.run(host=\"0.0.0.0\", port=5000)'"]
+# Запускаем приложение напрямую (простой и надежный способ)
+CMD ["python", "-m", "app.app"]
