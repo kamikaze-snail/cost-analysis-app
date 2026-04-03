@@ -1,3 +1,26 @@
+from collections import defaultdict
+import re
+from categories import CATEGORIES
+
+def parse_line_with_category(line):
+    """Парсит строку формата: 'сумма(дата) категория'"""
+    line = line.strip()
+    if not line:
+        return None, None
+    
+    match = re.search(r'(\d+)', line)
+    if not match:
+        return None, None
+    
+    amount = int(match.group(1))
+    
+    # Ищем категорию
+    for key, value in CATEGORIES.items():
+        if value.lower() in line.lower():
+            return amount, key
+    
+    return amount, "misc"
+
 def format_currency(amount):
     """Форматирование суммы"""
     return f"{amount:,.2f} руб."
