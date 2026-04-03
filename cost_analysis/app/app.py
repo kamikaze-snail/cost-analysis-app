@@ -2,6 +2,10 @@ import os
 from flask import Flask, render_template, request, redirect, url_for, flash, send_file
 from werkzeug.utils import secure_filename
 
+from flask import render_template  # вместо render_template_string
+from categories import CATEGORIES  # импортируйте категории
+
+
 from config import config
 from models.database import Database
 from utils.helpers import get_month_name, allowed_file, calculate_percentage
@@ -21,27 +25,35 @@ MONTH_NAMES = ['Январь', 'Февраль', 'Март', 'Апрель', 'М
                'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь']
 
 # --- Маршруты ---
-@app.route('/')
+@app.route('/', methods=['GET', 'POST'])
 def index():
-    """Главная страница"""
-    stats = db.get_stats()
-    df, total = db.get_expenses()
+    result = None
+    count = None
+    totals_by_category = None
+    selected_category = "all"
+    error = None
     
-    table_data = []
-    if df is not None:
-        for _, row in df.iterrows():
-            table_data.append({
-                'category': row['category'],
-                'amount': row['amount'],
-                'percentage': calculate_percentage(row['amount'], total)
-            })
+    if request.method == 'POST':
+        data = request.form.get('data', '')
+        selected_category = request.form.get('category_filter', 'all')
+        
+        try:
+            calculation = process_calculation(data, selected_category)
+            result = calculation["total_sum"]
+            count = calculation["total_count"]
+            totals_by_category = calculation["category_totals"]
+        except Exception as e:
+            error = str(e)
     
-    return render_template('index.html',
-                         stats=stats,
-                         table_data=table_data,
-                         total_filtered=total,
-                         month_names=MONTH_NAMES,
-                         title="Все расходы")
+    return render_template(
+        'index.html',
+        result=result,
+        count=count,
+        categories=CATEGORIES,
+        selected_category=selected_category,
+        totals_by_category=totals_by_category,
+        error=error
+    )
 
 @app.route('/upload')
 def upload_page():
@@ -185,6 +197,39 @@ def internal_error(error):
     flash('Внутренняя ошибка сервера', 'error')
     return redirect(url_for('index'))
 
+def parse_line_with_category(line):
+    """Парсит строку формата: 'сумма(дата) категория' или 'сумма(дата)'"""
+    line = line.strip()
+    if not line:
+        return None, None
+    
+    # Ищем число в строке
+    match = re.search(r'(\d+)', line)
+    if not match:
+        return None, None
+    
+    amount = int(match.group(1))
+    
+    # Ищем категорию (последнее слово/фраза после пробела)
+    # Поддержка категорий с пробелами (например "Еда", "Варе на расходы")
+    for key, value in CATEGORIES.items():
+        # Убираем эмодзи и ищем совпадение
+        clean_value = value.split(' ', 1)[-1] if ' ' in value else value
+        if clean_value.lower() in line.lower():
+            return amount, key
+    
+    # Если категория не найдена, пробуем взять последнее слово
+    words = line.split()
+    if len(words) > 1:
+        possible = words[-1].lower()
+        # Ищем по ключу или по названию без эмодзи
+        for key, value in CATEGORIES.items():
+            clean_value = value.split(' ', 1)[-1] if ' ' in value else value
+            if possible in clean_value.lower() or clean_value.lower() == possible:
+                return amount, key
+    
+    return amount, "misc"
+	
 # --- Запуск ---
 if __name__ == '__main__':
     print("=" * 50)

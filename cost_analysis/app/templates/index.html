@@ -1,83 +1,60 @@
 {% extends "base.html" %}
 
-{% block title %}Главная - Анализатор расходов{% endblock %}
-
 {% block content %}
-<h2>📊 Общая статистика</h2>
+<h1>Калькулятор сумм по категориям</h1>
 
-<div class="stats-grid">
-    <div class="stat-card">
-        <h3>Всего записей</h3>
-        <div class="value">{{ stats.total_records }}</div>
-    </div>
-    <div class="stat-card">
-        <h3>Общая сумма</h3>
-        <div class="value">{{ "%.2f"|format(stats.total_amount) }} ₽</div>
-    </div>
-    <div class="stat-card">
-        <h3>Категорий</h3>
-        <div class="value">{{ stats.total_categories }}</div>
-    </div>
-    {% if stats.min_date %}
-    <div class="stat-card">
-        <h3>Период</h3>
-        <div class="value" style="font-size: 16px;">
-            {{ stats.min_date[:10] }}<br>
-            {{ stats.max_date[:10] }}
-        </div>
-    </div>
-    {% endif %}
-</div>
-
-<div class="filter-form">
-    <form method="get" action="{{ url_for('filter_expenses') }}">
-        <label>Фильтр по периоду:</label>
-        <input type="number" name="year" placeholder="Год" value="{{ request.args.get('year', '') }}">
-        <select name="month">
-            <option value="">Все месяцы</option>
-            {% for i in range(1, 13) %}
-            <option value="{{ i }}" {% if request.args.get('month')|int == i %}selected{% endif %}>
-                {{ month_names[i-1] }}
-            </option>
+<form method="POST">
+    <div class="category-select">
+        <label>Выберите категорию для фильтрации:</label>
+        <select name="category_filter">
+            <option value="all">📊 Все категории</option>
+            {% for key, value in categories.items() %}
+                <option value="{{ key }}" {% if selected_category == key %}selected{% endif %}>
+                    {{ value }}
+                </option>
             {% endfor %}
         </select>
-        <button type="submit">Применить</button>
-        <a href="{{ url_for('index') }}" style="text-decoration: none;">
-            <button type="button">Сбросить</button>
-        </a>
-    </form>
-</div>
-
-{% if table_data %}
-    <h3>{% if title %}{{ title }}{% else %}Все расходы{% endif %}</h3>
-    <div class="total">💰 Общая сумма: {{ "%.2f"|format(total_filtered) }} ₽</div>
+    </div>
     
-    <table>
-        <thead>
+    <textarea name="data" placeholder="Формат: сумма(дата) категория&#10;Пример:&#10;5000(15окт) Еда&#10;2000(16окт) Транспорт&#10;1500(17окт) Овощи"></textarea><br>
+    
+    <button type="submit">Посчитать сумму</button>
+</form>
+
+{% if result is not none %}
+    <div class="result">
+        <h2>Результат</h2>
+        <p><strong>Всего:</strong> {{ result }} руб.</p>
+        <p><strong>Количество записей:</strong> {{ count }}</p>
+        {% if selected_category != 'all' %}
+            <p><strong>Фильтр по категории:</strong> {{ categories[selected_category] }}</p>
+        {% endif %}
+    </div>
+{% endif %}
+
+{% if totals_by_category %}
+    <div class="total-by-category">
+        <h3>📊 Суммы по категориям</h3>
+        <table>
             <tr>
                 <th>Категория</th>
-                <th style="text-align: right">Сумма (₽)</th>
-                <th style="text-align: right">Доля (%)</th>
+                <th>Сумма (руб.)</th>
+                <th>Количество</th>
             </tr>
-        </thead>
-        <tbody>
-            {% for row in table_data %}
+            {% for cat_key, cat_data in totals_by_category.items() %}
             <tr>
-                <td>{{ row.category }}</td>
-                <td style="text-align: right">{{ "%.2f"|format(row.amount) }}</td>
-                <td style="text-align: right">{{ "%.1f"|format(row.percentage) }}%</td>
+                <td>{{ categories[cat_key] }}</td>
+                <td><strong>{{ cat_data.sum }}</strong></td>
+                <td>{{ cat_data.count }}</td>
             </tr>
             {% endfor %}
-        </tbody>
-    </table>
-{% else %}
-    <div class="alert alert-info">
-        Нет данных для отображения. 
-        {% if not stats.data_exists %}
-        Загрузите файл Excel с расходами через раздел "Загрузить".
-        {% else %}
-        Попробуйте изменить параметры фильтра.
-        {% endif %}
+        </table>
+    </div>
+{% endif %}
+
+{% if error %}
+    <div class="result error">
+        <h3>Ошибка: {{ error }}</h3>
     </div>
 {% endif %}
 {% endblock %}
