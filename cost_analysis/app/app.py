@@ -5,10 +5,11 @@ from werkzeug.utils import secure_filename
 from flask import render_template  # вместо render_template_string
 from categories import CATEGORIES  # импортируйте категории
 
-
 from config import config
 from models.database import Database
 from utils.helpers import get_month_name, allowed_file, calculate_percentage
+
+from utils.helpers import get_month_name, allowed_file, calculate_percentage, process_calculation, parse_line_with_category
 
 # Создаем приложение
 app = Flask(__name__)
@@ -196,39 +197,6 @@ def internal_error(error):
     """Страница 500"""
     flash('Внутренняя ошибка сервера', 'error')
     return redirect(url_for('index'))
-
-def parse_line_with_category(line):
-    """Парсит строку формата: 'сумма(дата) категория' или 'сумма(дата)'"""
-    line = line.strip()
-    if not line:
-        return None, None
-    
-    # Ищем число в строке
-    match = re.search(r'(\d+)', line)
-    if not match:
-        return None, None
-    
-    amount = int(match.group(1))
-    
-    # Ищем категорию (последнее слово/фраза после пробела)
-    # Поддержка категорий с пробелами (например "Еда", "Варе на расходы")
-    for key, value in CATEGORIES.items():
-        # Убираем эмодзи и ищем совпадение
-        clean_value = value.split(' ', 1)[-1] if ' ' in value else value
-        if clean_value.lower() in line.lower():
-            return amount, key
-    
-    # Если категория не найдена, пробуем взять последнее слово
-    words = line.split()
-    if len(words) > 1:
-        possible = words[-1].lower()
-        # Ищем по ключу или по названию без эмодзи
-        for key, value in CATEGORIES.items():
-            clean_value = value.split(' ', 1)[-1] if ' ' in value else value
-            if possible in clean_value.lower() or clean_value.lower() == possible:
-                return amount, key
-    
-    return amount, "misc"
 	
 # --- Запуск ---
 if __name__ == '__main__':
