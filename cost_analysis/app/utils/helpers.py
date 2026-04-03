@@ -21,6 +21,33 @@ def parse_line_with_category(line):
     
     return amount, "misc"
 
+def process_calculation(data, category_filter="all"):
+    """Обрабатывает данные и возвращает суммы по категориям"""
+    items = []
+    category_totals = defaultdict(lambda: {"sum": 0, "count": 0})
+    
+    lines = data.strip().split('\n')
+    for line in lines:
+        amount, category = parse_line_with_category(line)
+        if amount is not None:
+            items.append({"amount": amount, "category": category})
+            category_totals[category]["sum"] += amount
+            category_totals[category]["count"] += 1
+    
+    if category_filter != "all":
+        filtered_sum = sum(item["amount"] for item in items if item["category"] == category_filter)
+        filtered_count = sum(1 for item in items if item["category"] == category_filter)
+    else:
+        filtered_sum = sum(item["amount"] for item in items)
+        filtered_count = len(items)
+    
+    return {
+        "total_sum": filtered_sum,
+        "total_count": filtered_count,
+        "category_totals": dict(category_totals),
+        "all_items": items
+    }
+
 def format_currency(amount):
     """Форматирование суммы"""
     return f"{amount:,.2f} руб."
