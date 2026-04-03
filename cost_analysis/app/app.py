@@ -2,8 +2,8 @@ import os
 from flask import Flask, render_template, request, redirect, url_for, flash, send_file
 from werkzeug.utils import secure_filename
 
-from flask import render_template  # вместо render_template_string
-from categories import CATEGORIES  # импортируйте категории
+from categories import CATEGORIES
+from utils.helpers import process_calculation
 
 from config import config
 from models.database import Database
@@ -39,6 +39,9 @@ def index():
         selected_category = request.form.get('category_filter', 'all')
         
         try:
+            from utils.helpers import process_calculation
+            from categories import CATEGORIES
+            
             calculation = process_calculation(data, selected_category)
             result = calculation["total_sum"]
             count = calculation["total_count"]
