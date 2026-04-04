@@ -3,12 +3,8 @@ from flask import Flask, render_template, request, redirect, url_for, flash, sen
 from werkzeug.utils import secure_filename
 
 from categories import CATEGORIES
-from utils.helpers import process_calculation
-
 from config import config
 from models.database import Database
-from utils.helpers import get_month_name, allowed_file, calculate_percentage
-
 from utils.helpers import get_month_name, allowed_file, calculate_percentage, process_calculation, parse_line_with_category
 
 # Создаем приложение
@@ -39,9 +35,7 @@ def index():
         selected_category = request.form.get('category_filter', 'all')
         
         try:
-            from utils.helpers import process_calculation
-            from categories import CATEGORIES
-            
+            # НЕ импортируйте здесь! Они уже импортированы в начале файла
             calculation = process_calculation(data, selected_category)
             result = calculation["total_sum"]
             count = calculation["total_count"]
@@ -53,7 +47,7 @@ def index():
         'index.html',
         result=result,
         count=count,
-        categories=CATEGORIES,
+        categories=CATEGORIES,  # Берется из импорта в начале файла
         selected_category=selected_category,
         totals_by_category=totals_by_category,
         error=error
