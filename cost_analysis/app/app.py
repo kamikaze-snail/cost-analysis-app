@@ -24,18 +24,14 @@ MONTH_NAMES = ['Январь', 'Февраль', 'Март', 'Апрель', 'М
 # --- Маршруты ---
 @app.route('/', methods=['GET', 'POST'])
 def index():
-    # ВРЕМЕННО: проверяем, что приходит из формы
+    # Принудительно пишем в файл
     with open('/tmp/debug.log', 'a') as f:
         f.write(f"Method: {request.method}\n")
         if request.method == 'POST':
             f.write(f"Data: {request.form.get('data', '')}\n")
-            f.write(f"Category: {request.form.get('category_filter', 'all')})\n"
-	if request.method == 'POST':
-        print("=" * 50)
-        print(f"POST request received")
-        print(f"data: {request.form.get('data', '')}")
-        print(f"category_filter: {request.form.get('category_filter', 'all')}")
-        print("=" * 50)
+            f.write(f"Category: {request.form.get('category_filter', 'all')}\n")
+        f.write("---\n")
+    
     result = None
     count = None
     totals_by_category = None
@@ -47,7 +43,6 @@ def index():
         selected_category = request.form.get('category_filter', 'all')
         
         try:
-            # НЕ импортируйте здесь! Они уже импортированы в начале файла
             calculation = process_calculation(data, selected_category)
             result = calculation["total_sum"]
             count = calculation["total_count"]
@@ -59,7 +54,7 @@ def index():
         'index.html',
         result=result,
         count=count,
-        categories=CATEGORIES,  # Берется из импорта в начале файла
+        categories=CATEGORIES,
         selected_category=selected_category,
         totals_by_category=totals_by_category,
         error=error
