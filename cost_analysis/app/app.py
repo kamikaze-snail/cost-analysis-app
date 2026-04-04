@@ -29,7 +29,7 @@ def index():
         f.write(f"Method: {request.method}\n")
         if request.method == 'POST':
             f.write(f"Data: {request.form.get('data', '')}\n")
-            f.write(f"Category: {request.form.get('category_filter', 'all')}\n")
+            f.write(f"Category: {request.form.get('category_filter', 'all')}\n"
 	if request.method == 'POST':
         print("=" * 50)
         print(f"POST request received")
