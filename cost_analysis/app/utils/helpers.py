@@ -23,6 +23,7 @@ def parse_line_with_category(line):
 
 def process_calculation(data, category_filter="all"):
     """Обрабатывает данные и возвращает суммы по категориям"""
+    rint(f"=== process_calculation called with data: '{data}' ===")
     items = []
     category_totals = defaultdict(lambda: {"sum": 0, "count": 0})
     
