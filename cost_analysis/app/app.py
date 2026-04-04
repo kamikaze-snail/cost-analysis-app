@@ -24,6 +24,13 @@ MONTH_NAMES = ['Январь', 'Февраль', 'Март', 'Апрель', 'М
 # --- Маршруты ---
 @app.route('/', methods=['GET', 'POST'])
 def index():
+    # ВРЕМЕННО: проверяем, что приходит из формы
+    if request.method == 'POST':
+        print("=" * 50)
+        print(f"POST request received")
+        print(f"data: {request.form.get('data', '')}")
+        print(f"category_filter: {request.form.get('category_filter', 'all')}")
+        print("=" * 50)
     result = None
     count = None
     totals_by_category = None
