@@ -65,3 +65,27 @@ def allowed_file(filename, allowed_extensions):
 def calculate_percentage(amount, total):
     """Расчет процента"""
     return (amount / total * 100) if total > 0 else 0
+
+def parse_line_with_category(line):
+    """Парсит строку формата: 'сумма(дата) категория'"""
+    line = line.strip()
+    if not line:
+        return None, None
+    
+    match = re.search(r'(\d+)', line)
+    if not match:
+        return None, None
+    
+    amount = int(match.group(1))
+    
+    # Отладка: выводим строку для проверки
+    print(f"DEBUG: line = '{line}', amount = {amount}")
+    
+    # Ищем категорию
+    for key, value in CATEGORIES.items():
+        if value.lower() in line.lower():
+            print(f"DEBUG: found category '{value}' -> key '{key}'")
+            return amount, key
+    
+    print(f"DEBUG: no category found, defaulting to 'misc'")
+    return amount, "misc"
