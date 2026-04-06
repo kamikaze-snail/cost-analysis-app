@@ -1,6 +1,7 @@
 git init
 git add README.md
 git commit -m "first commit"
+git tag -a v0.1.0 -m "first tag
 git branch -M main
 git remote add origin https://github.com/kamikaze-snail/cost-analysis-app.git
 git push -u origin main

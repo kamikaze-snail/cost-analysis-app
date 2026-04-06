@@ -1,0 +1,183 @@
+{% extends "base.html" %}
+
+{% block content %}
+{% if error %}
+<div class="error">
+    ⚠️ {{ error }}
+</div>
+{% endif %}
+
+<!-- Карточка с фильтрами -->
+<div class="card">
+    <div class="card-title">🔍 Фильтрация данных</div>
+    <form action="/filter" method="post" class="filter-form">
+        <div class="filter-group">
+            <label>Категория</label>
+            <select name="category">
+                <option value="">Все категории</option>
+                {% for cat in categories %}
+                <option value="{{ cat }}">{{ cat }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="filter-group">
+            <label>Год</label>
+            <select name="year">
+                <option value="">Все годы</option>
+                {% for y in years %}
+                <option value="{{ y }}">{{ y }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="filter-group">
+            <label>Месяц</label>
+            <select name="month">
+                <option value="">Все месяцы</option>
+                <option value="1">Январь</option>
+                <option value="2">Февраль</option>
+                <option value="3">Март</option>
+                <option value="4">Апрель</option>
+                <option value="5">Май</option>
+                <option value="6">Июнь</option>
+                <option value="7">Июль</option>
+                <option value="8">Август</option>
+                <option value="9">Сентябрь</option>
+                <option value="10">Октябрь</option>
+                <option value="11">Ноябрь</option>
+                <option value="12">Декабрь</option>
+            </select>
+        </div>
+        <div class="filter-group">
+            <label>Дата от</label>
+            <input type="date" name="start_date">
+        </div>
+        <div class="filter-group">
+            <label>Дата до</label>
+            <input type="date" name="end_date">
+        </div>
+        <div class="filter-group">
+            <button type="submit" class="btn">Применить фильтр</button>
+            <a href="/" class="btn btn-secondary" style="display: inline-block; text-decoration: none; text-align: center;">🔄 Новый файл</a>
+            <a href="/download" class="btn btn-secondary" style="display: inline-block; text-decoration: none; text-align: center;">📥 Скачать данные</a>
+        </div>
+    </form>
+</div>
+
+<!-- Статистика -->
+<div class="stats-grid">
+    <div class="stat-card">
+        <h3>💰 Общие расходы</h3>
+        <div class="value">{{ "{:,.0f}".format(stats.total) }} ₽</div>
+    </div>
+    <div class="stat-card">
+        <h3>📅 Средние расходы в месяц</h3>
+        <div class="value">{{ "{:,.0f}".format(stats.avg_monthly) }} ₽</div>
+    </div>
+    <div class="stat-card">
+        <h3>📊 Всего записей</h3>
+        <div class="value">{{ stats.record_count }}</div>
+    </div>
+</div>
+
+<!-- Расходы по годам -->
+<div class="card">
+    <div class="card-title">📆 Расходы по годам</div>
+    <div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));">
+        {% for year, amount in stats.by_year.items() %}
+        <div class="stat-card" style="background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);">
+            <h3>{{ year }} год</h3>
+            <div class="value">{{ "{:,.0f}".format(amount) }} ₽</div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Расходы по месяцам (таблица) -->
+<div class="card">
+    <div class="card-title">📅 Средние расходы по месяцам</div>
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr><th>Месяц</th><th>Средняя сумма</th></tr>
+            </thead>
+            <tbody>
+                {% for month, amount in stats.by_month.items() %}
+                <tr>
+                    <td>{{ month }}</td>
+                    <td class="negative">{{ "{:,.0f}".format(amount) }} ₽</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Расходы по дням недели (таблица) -->
+<div class="card">
+    <div class="card-title">📅 Расходы по дням недели</div>
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr><th>День недели</th><th>Сумма</th></tr>
+            </thead>
+            <tbody>
+                {% for weekday, amount in stats.by_weekday.items() %}
+                <tr>
+                    <td>{{ weekday }}</td>
+                    <td class="negative">{{ "{:,.0f}".format(amount) }} ₽</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Топ категорий -->
+<div class="card">
+    <div class="card-title">🏆 Топ-10 категорий расходов</div>
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr><th>Категория</th><th>Сумма</th></tr>
+            </thead>
+            <tbody>
+                {% for cat, amount in stats.top_categories.items() %}
+                <tr>
+                    <td>{{ cat }}</td>
+                    <td class="negative">{{ "{:,.0f}".format(amount) }} ₽</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Детальная таблица -->
+{% if table_data %}
+<div class="card">
+    <div class="card-title">📋 Детальные записи (последние 50)</div>
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Дата</th>
+                    <th>Категория</th>
+                    <th>Сумма</th>
+                    <th>Описание</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in table_data %}
+                <tr>
+                    <td>{{ row.DateTime }}</td>
+                    <td>{{ row.Category }}</td>
+                    <td class="negative">{{ "{:,.0f}".format(row.Value) }} ₽</td>
+                    <td>{{ row.Description[:50] }}{% if row.Description|length > 50 %}...{% endif %}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

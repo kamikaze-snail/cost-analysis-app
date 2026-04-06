@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}Анализатор расходов{% endblock %}</title>
+    <title>Анализатор расходов</title>
     <style>
         * {
             margin: 0;
@@ -12,7 +12,7 @@
         }
         
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
             padding: 20px;
@@ -21,175 +21,190 @@
         .container {
             max-width: 1400px;
             margin: 0 auto;
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
-            overflow: hidden;
         }
         
         .header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            text-align: center;
             color: white;
-            padding: 30px;
+            margin-bottom: 30px;
         }
         
         .header h1 {
-            font-size: 28px;
+            font-size: 2.5rem;
             margin-bottom: 10px;
         }
         
-        .nav {
-            background: #f8f9fa;
-            padding: 15px 30px;
-            border-bottom: 1px solid #e9ecef;
+        .header p {
+            opacity: 0.9;
         }
         
-        .nav a {
-            color: #495057;
-            text-decoration: none;
-            padding: 8px 16px;
-            margin: 0 5px;
-            border-radius: 6px;
-            transition: all 0.3s;
+        .card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 25px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
         }
         
-        .nav a:hover {
-            background: #e9ecef;
-            color: #667eea;
-        }
-        
-        .content {
-            padding: 30px;
-        }
-        
-        .alert {
-            padding: 15px;
+        .card-title {
+            font-size: 1.5rem;
+            color: #333;
             margin-bottom: 20px;
-            border-radius: 8px;
-        }
-        
-        .alert-success {
-            background-color: #d4edda;
-            color: #155724;
-            border: 1px solid #c3e6cb;
-        }
-        
-        .alert-error {
-            background-color: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
-        }
-        
-        .alert-info {
-            background-color: #d1ecf1;
-            color: #0c5460;
-            border: 1px solid #bee5eb;
-        }
-        
-        button, .btn {
-            background: #667eea;
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 14px;
-            transition: all 0.3s;
-        }
-        
-        button:hover, .btn:hover {
-            background: #5a67d8;
-            transform: translateY(-1px);
-        }
-        
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin: 20px 0;
-        }
-        
-        th, td {
-            padding: 12px;
-            text-align: left;
-            border-bottom: 1px solid #e9ecef;
-        }
-        
-        th {
-            background-color: #f8f9fa;
-            font-weight: 600;
-            color: #495057;
-        }
-        
-        tr:hover {
-            background-color: #f8f9fa;
-        }
-        
-        .total {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 15px;
-            border-radius: 8px;
-            margin: 20px 0;
-            font-size: 18px;
-            font-weight: bold;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #667eea;
         }
         
         .stats-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
             gap: 20px;
-            margin: 20px 0;
+            margin-bottom: 20px;
         }
         
         .stat-card {
-            background: #f8f9fa;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
             padding: 20px;
-            border-radius: 8px;
+            border-radius: 10px;
             text-align: center;
         }
         
         .stat-card h3 {
-            color: #6c757d;
-            font-size: 14px;
+            font-size: 0.9rem;
+            opacity: 0.9;
             margin-bottom: 10px;
         }
         
         .stat-card .value {
-            font-size: 28px;
+            font-size: 2rem;
             font-weight: bold;
-            color: #667eea;
         }
         
         .filter-form {
-            background: #f8f9fa;
-            padding: 20px;
-            border-radius: 8px;
-            margin: 20px 0;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            align-items: flex-end;
         }
         
-        .filter-form input, .filter-form select {
+        .filter-group {
+            flex: 1;
+            min-width: 150px;
+        }
+        
+        .filter-group label {
+            display: block;
+            font-size: 0.85rem;
+            color: #666;
+            margin-bottom: 5px;
+        }
+        
+        .filter-group select, .filter-group input {
+            width: 100%;
             padding: 8px 12px;
-            border: 1px solid #ced4da;
-            border-radius: 4px;
-            margin: 0 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 0.9rem;
+        }
+        
+        .btn {
+            padding: 8px 20px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: background 0.3s;
+        }
+        
+        .btn:hover {
+            background: #5a67d8;
+        }
+        
+        .btn-secondary {
+            background: #48bb78;
+        }
+        
+        .btn-secondary:hover {
+            background: #38a169;
+        }
+        
+        .btn-danger {
+            background: #e53e3e;
+        }
+        
+        .btn-danger:hover {
+            background: #c53030;
+        }
+        
+        .chart-container {
+            margin: 20px 0;
+            text-align: center;
+        }
+        
+        .chart-container img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 10px;
+        }
+        
+        .table-container {
+            overflow-x: auto;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+        
+        th {
+            background: #f7f7f7;
+            font-weight: 600;
+            color: #333;
+        }
+        
+        tr:hover {
+            background: #f9f9f9;
+        }
+        
+        .negative {
+            color: #e53e3e;
+            font-weight: 600;
+        }
+        
+        .error {
+            background: #fed7d7;
+            color: #c53030;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .footer {
+            text-align: center;
+            color: white;
+            margin-top: 30px;
+            opacity: 0.8;
         }
         
         @media (max-width: 768px) {
-            .content {
-                padding: 15px;
+            .stats-grid {
+                grid-template-columns: 1fr;
             }
             
-            .nav a {
-                display: inline-block;
-                margin: 5px;
+            .filter-form {
+                flex-direction: column;
             }
             
-            table {
-                font-size: 12px;
-            }
-            
-            th, td {
-                padding: 8px;
+            .filter-group {
+                width: 100%;
             }
         }
     </style>
@@ -197,27 +212,14 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>💰 Анализатор расходов</h1>
-            <p>Управляйте своими финансами эффективно</p>
+            <h1>📊 Анализатор расходов</h1>
+            <p>Загрузите файл с данными и получите детальную аналитику</p>
         </div>
         
-        <div class="nav">
-            <a href="{{ url_for('index') }}">🏠 Главная</a>
-            <a href="{{ url_for('upload_page') }}">📤 Загрузить</a>
-            <a href="{{ url_for('stats') }}">📈 Статистика</a>
-            <a href="{{ url_for('export') }}">💾 Экспорт</a>
-        </div>
+        {% block content %}{% endblock %}
         
-        <div class="content">
-            {% with messages = get_flashed_messages(with_categories=true) %}
-                {% if messages %}
-                    {% for category, message in messages %}
-                        <div class="alert alert-{{ category }}">{{ message }}</div>
-                    {% endfor %}
-                {% endif %}
-            {% endwith %}
-            
-            {% block content %}{% endblock %}
+        <div class="footer">
+            <p>Анализатор расходов — ваши финансы под контролем</p>
         </div>
     </div>
 </body>

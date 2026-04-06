@@ -1,60 +1,30 @@
 {% extends "base.html" %}
 
 {% block content %}
-<h1>Калькулятор сумм по категориям</h1>
-
-<form method="POST">
-    <div class="category-select">
-        <label>Выберите категорию для фильтрации:</label>
-        <select name="category_filter">
-            <option value="all">📊 Все категории</option>
-            {% for key, value in categories.items() %}
-                <option value="{{ key }}" {% if selected_category == key %}selected{% endif %}>
-                    {{ value }}
-                </option>
-            {% endfor %}
-        </select>
-    </div>
+<div class="card">
+    <div class="card-title">📁 Загрузка файла</div>
+    <form action="/upload" method="post" enctype="multipart/form-data">
+        <div class="filter-form">
+            <div class="filter-group" style="flex: 2;">
+                <label>Выберите Excel файл (.xls или .xlsx)</label>
+                <input type="file" name="file" accept=".xls,.xlsx" required>
+            </div>
+            <div class="filter-group">
+                <button type="submit" class="btn">📈 Загрузить и анализировать</button>
+            </div>
+        </div>
+    </form>
     
-    <textarea name="data" placeholder="Формат: сумма(дата) категория&#10;Пример:&#10;5000(15окт) Еда&#10;2000(16окт) Транспорт&#10;1500(17окт) Овощи"></textarea><br>
-    
-    <button type="submit">Посчитать сумму</button>
-</form>
-
-{% if result is not none %}
-    <div class="result">
-        <h2>Результат</h2>
-        <p><strong>Всего:</strong> {{ result }} руб.</p>
-        <p><strong>Количество записей:</strong> {{ count }}</p>
-        {% if selected_category != 'all' %}
-            <p><strong>Фильтр по категории:</strong> {{ categories[selected_category] }}</p>
-        {% endif %}
+    <div style="margin-top: 30px; padding: 15px; background: #f0f0f0; border-radius: 10px;">
+        <h3 style="margin-bottom: 10px;">📌 Формат файла</h3>
+        <p>Файл должен содержать следующие колонки:</p>
+        <ul style="margin-left: 20px; margin-top: 10px;">
+            <li><strong>DateTime</strong> — дата и время операции</li>
+            <li><strong>Category</strong> — категория расхода</li>
+            <li><strong>Value</strong> — сумма (отрицательные числа)</li>
+            <li><strong>Description</strong> — описание/комментарий</li>
+        </ul>
+        <p style="margin-top: 10px;">Колонки Type, Wallet, Currency будут проигнорированы.</p>
     </div>
-{% endif %}
-
-{% if totals_by_category %}
-    <div class="total-by-category">
-        <h3>📊 Суммы по категориям</h3>
-        <table>
-            <tr>
-                <th>Категория</th>
-                <th>Сумма (руб.)</th>
-                <th>Количество</th>
-            </tr>
-            {% for cat_key, cat_data in totals_by_category.items() %}
-            <tr>
-                <td>{{ categories[cat_key] }}</td>
-                <td><strong>{{ cat_data.sum }}</strong></td>
-                <td>{{ cat_data.count }}</td>
-            </tr>
-            {% endfor %}
-        </table>
-    </div>
-{% endif %}
-
-{% if error %}
-    <div class="result error">
-        <h3>Ошибка: {{ error }}</h3>
-    </div>
-{% endif %}
+</div>
 {% endblock %}

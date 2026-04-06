@@ -1,216 +1,203 @@
+from flask import Flask, render_template, request, send_file, session, redirect, url_for
+import pandas as pd
+import io
 import os
-from flask import Flask, render_template, request, redirect, url_for, flash, send_file
 from werkzeug.utils import secure_filename
 
-from categories import CATEGORIES
-from config import config
-from models.database import Database
-from utils.helpers import get_month_name, allowed_file, calculate_percentage, process_calculation, parse_line_with_category
-
-# Создаем приложение
 app = Flask(__name__)
-app.config.from_object(config['development'])
+app.secret_key = 'your-secret-key-here-change-in-production'
+app.config['UPLOAD_FOLDER'] = 'uploads'
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max
 
-# Инициализация базы данных
-db = Database(app.config['DATABASE'])
-
-# Создаем папку для загрузок
+# Создаём папку для загрузок, если её нет
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
-# Названия месяцев
-MONTH_NAMES = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
-               'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь']
+# Русские названия месяцев
+MONTHS_RU = ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек']
 
-# --- Маршруты ---
-@app.route('/', methods=['GET', 'POST'])
+
+def load_and_prepare_data(filepath):
+    """Загружает и подготавливает данные из Excel файла"""
+    df = pd.read_excel(filepath, sheet_name='Report')
+    
+    # Оставляем только нужные колонки
+    df = df[['DateTime', 'Category', 'Value', 'Description']].copy()
+    
+    # Преобразуем дату
+    df['DateTime'] = pd.to_datetime(df['DateTime'])
+    df = df.sort_values('DateTime')
+    
+    # Очищаем значения
+    df['Value'] = pd.to_numeric(df['Value'], errors='coerce')
+    df = df.dropna(subset=['Value'])
+    
+    # Создаём дополнительные колонки
+    df['Year'] = df['DateTime'].dt.year
+    df['Month'] = df['DateTime'].dt.month
+    df['YearMonth'] = df['DateTime'].dt.to_period('M')
+    df['MonthName'] = df['DateTime'].dt.month.map(lambda x: MONTHS_RU[x-1])
+    df['Day'] = df['DateTime'].dt.day
+    
+    return df
+
+
+def get_summary_stats(df):
+    """Получает общую статистику по расходам"""
+    total = df['Value'].sum()
+    avg_monthly = df.groupby('YearMonth')['Value'].sum().mean()
+    
+    # Расходы по годам
+    by_year = df.groupby('Year')['Value'].sum().to_dict()
+    
+    # Топ категорий
+    top_categories = df.groupby('Category')['Value'].sum().sort_values(ascending=False).head(10).to_dict()
+    
+    # Расходы по месяцам (средние за всё время)
+    by_month = df.groupby('Month')['Value'].sum() / df['Year'].nunique()
+    by_month = {MONTHS_RU[i-1]: val for i, val in by_month.items()}
+    
+    # Статистика по дням недели
+    df['Weekday'] = df['DateTime'].dt.dayofweek
+    weekdays = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс']
+    by_weekday = df.groupby('Weekday')['Value'].sum().to_dict()
+    by_weekday = {weekdays[k]: v for k, v in by_weekday.items()}
+    
+    return {
+        'total': total,
+        'avg_monthly': avg_monthly,
+        'by_year': by_year,
+        'top_categories': top_categories,
+        'by_month': by_month,
+        'by_weekday': by_weekday,
+        'record_count': len(df)
+    }
+
+
+def filter_data(df, category=None, year=None, month=None, start_date=None, end_date=None):
+    """Фильтрует данные по заданным параметрам"""
+    filtered = df.copy()
+    
+    if category:
+        filtered = filtered[filtered['Category'] == category]
+    if year:
+        filtered = filtered[filtered['Year'] == int(year)]
+    if month:
+        filtered = filtered[filtered['Month'] == int(month)]
+    if start_date:
+        filtered = filtered[filtered['DateTime'] >= pd.to_datetime(start_date)]
+    if end_date:
+        filtered = filtered[filtered['DateTime'] <= pd.to_datetime(end_date)]
+    
+    return filtered
+
+
+@app.route('/')
 def index():
-    # Принудительно пишем в файл
-    with open('/tmp/debug.log', 'a') as f:
-        f.write(f"Method: {request.method}\n")
-        if request.method == 'POST':
-            f.write(f"Data: {request.form.get('data', '')}\n")
-            f.write(f"Category: {request.form.get('category_filter', 'all')}\n")
-        f.write("---\n")
-    
-    result = None
-    count = None
-    totals_by_category = None
-    selected_category = "all"
-    error = None
-    
-    if request.method == 'POST':
-        data = request.form.get('data', '')
-        selected_category = request.form.get('category_filter', 'all')
-        
-        try:
-            calculation = process_calculation(data, selected_category)
-            result = calculation["total_sum"]
-            count = calculation["total_count"]
-            totals_by_category = calculation["category_totals"]
-        except Exception as e:
-            error = str(e)
-    
-    return render_template(
-        'index.html',
-        result=result,
-        count=count,
-        categories=CATEGORIES,
-        selected_category=selected_category,
-        totals_by_category=totals_by_category,
-        error=error
-    )
+    """Главная страница с загрузкой файла"""
+    return render_template('index.html')
 
-@app.route('/upload')
-def upload_page():
-    """Страница загрузки"""
-    return render_template('upload.html', month_names=MONTH_NAMES)
 
 @app.route('/upload', methods=['POST'])
 def upload_file():
-    """Обработка загрузки файла"""
+    """Загружает файл и показывает отчёт"""
     if 'file' not in request.files:
-        flash('Файл не выбран', 'error')
-        return redirect(url_for('upload_page'))
+        return redirect(url_for('index'))
     
     file = request.files['file']
     if file.filename == '':
-        flash('Файл не выбран', 'error')
-        return redirect(url_for('upload_page'))
-    
-    if not allowed_file(file.filename, app.config['ALLOWED_EXTENSIONS']):
-        flash('Неподдерживаемый формат. Используйте .xls или .xlsx', 'error')
-        return redirect(url_for('upload_page'))
-    
-    filename = secure_filename(file.filename)
-    filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-    file.save(filepath)
-    
-    success, message = db.import_from_excel(filepath)
-    os.remove(filepath)
-    
-    if success:
-        flash(message, 'success')
-    else:
-        flash(message, 'error')
-    
-    return redirect(url_for('index'))
-
-@app.route('/filter')
-def filter_expenses():
-    """Фильтрация расходов"""
-    year = request.args.get('year', type=int)
-    month = request.args.get('month', type=int)
-    
-    if month and (month < 1 or month > 12):
-        flash('Месяц должен быть от 1 до 12', 'error')
         return redirect(url_for('index'))
     
-    df, total = db.get_expenses(year, month)
-    
-    table_data = []
-    if df is not None:
-        for _, row in df.iterrows():
-            table_data.append({
-                'category': row['category'],
-                'amount': row['amount'],
-                'percentage': calculate_percentage(row['amount'], total)
-            })
-    
-    stats = db.get_stats()
-    
-    # Формируем заголовок
-    title = "Все расходы"
-    if year and month:
-        title = f"Расходы за {MONTH_NAMES[month-1]} {year} г."
-    elif year:
-        title = f"Расходы за {year} г."
-    
-    return render_template('index.html',
-                         stats=stats,
-                         table_data=table_data,
-                         total_filtered=total,
-                         month_names=MONTH_NAMES,
-                         title=title)
-
-@app.route('/stats')
-def stats():
-    """Страница статистики"""
-    from models.database import Database
-    import pandas as pd
-    
-    conn_db = Database(app.config['DATABASE'])
-    
-    with conn_db.get_connection() as conn:
-        # Статистика по месяцам
-        query_monthly = '''
-            SELECT 
-                strftime('%Y-%m', datetime) as month,
-                SUM(value) as total
-            FROM expenses
-            GROUP BY strftime('%Y-%m', datetime)
-            ORDER BY month DESC
-            LIMIT 12
-        '''
-        monthly_stats = pd.read_sql_query(query_monthly, conn)
+    if file and (file.filename.endswith('.xls') or file.filename.endswith('.xlsx')):
+        filename = secure_filename(file.filename)
+        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        file.save(filepath)
         
-        # Топ категорий
-        query_categories = '''
-            SELECT category, SUM(value) as total
-            FROM expenses
-            GROUP BY category
-            ORDER BY total DESC
-            LIMIT 10
-        '''
-        top_categories = pd.read_sql_query(query_categories, conn)
+        # Загружаем и подготавливаем данные
+        df = load_and_prepare_data(filepath)
+        
+        # Сохраняем данные в сессии для последующей фильтрации
+        session['data'] = df.to_json(date_format='iso', orient='split')
+        
+        # Получаем статистику
+        stats = get_summary_stats(df)
+        
+        # Список категорий для фильтра
+        categories = sorted(df['Category'].unique())
+        years = sorted(df['Year'].unique(), reverse=True)
+        
+        # Таблица с детальными расходами
+        table_data = df[['DateTime', 'Category', 'Value', 'Description']].copy()
+        table_data['DateTime'] = table_data['DateTime'].dt.strftime('%d.%m.%Y %H:%M')
+        table_data = table_data.sort_values('DateTime', ascending=False).head(50)
+        
+        return render_template('report.html', 
+                               stats=stats,
+                               categories=categories,
+                               years=years,
+                               table_data=table_data.to_dict('records'))
     
-    return render_template('stats.html',
-                         monthly_stats=monthly_stats,
-                         top_categories=top_categories,
-                         month_names=MONTH_NAMES)
+    return redirect(url_for('index'))
 
-@app.route('/export')
-def export():
-    """Экспорт данных в Excel"""
-    import tempfile
-    from datetime import datetime
-    
-    df = db.export_to_excel()
-    
-    if df is None or df.empty:
-        flash('Нет данных для экспорта', 'error')
+
+@app.route('/filter', methods=['POST'])
+def filter_report():
+    """Фильтрует данные и показывает обновлённый отчёт"""
+    data_json = session.get('data')
+    if not data_json:
         return redirect(url_for('index'))
     
-    # Создаем временный файл
-    temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.xlsx')
-    df.to_excel(temp_file.name, index=False, sheet_name='Expenses')
+    df = pd.read_json(data_json, orient='split')
     
-    return send_file(
-        temp_file.name,
-        as_attachment=True,
-        download_name=f'expenses_{datetime.now().strftime("%Y%m%d_%H%M%S")}.xlsx',
-        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-    )
+    # Получаем параметры фильтрации
+    category = request.form.get('category')
+    year = request.form.get('year')
+    month = request.form.get('month')
+    start_date = request.form.get('start_date')
+    end_date = request.form.get('end_date')
+    
+    # Применяем фильтры
+    filtered_df = filter_data(df, category, year, month, start_date, end_date)
+    
+    if len(filtered_df) == 0:
+        return render_template('report.html', 
+                               error="Нет данных для выбранных фильтров",
+                               categories=sorted(df['Category'].unique()),
+                               years=sorted(df['Year'].unique(), reverse=True))
+    
+    # Получаем статистику для отфильтрованных данных
+    stats = get_summary_stats(filtered_df)
+    
+    # Таблица с детальными расходами
+    table_data = filtered_df[['DateTime', 'Category', 'Value', 'Description']].copy()
+    table_data['DateTime'] = table_data['DateTime'].dt.strftime('%d.%m.%Y %H:%M')
+    table_data = table_data.sort_values('DateTime', ascending=False).head(50)
+    
+    categories = sorted(df['Category'].unique())
+    years = sorted(df['Year'].unique(), reverse=True)
+    
+    return render_template('report.html',
+                           stats=stats,
+                           categories=categories,
+                           years=years,
+                           table_data=table_data.to_dict('records'))
 
-@app.errorhandler(404)
-def not_found(error):
-    """Страница 404"""
-    return render_template('404.html'), 404
 
-@app.errorhandler(500)
-def internal_error(error):
-    """Страница 500"""
-    flash('Внутренняя ошибка сервера', 'error')
-    return redirect(url_for('index'))
-	
-# --- Запуск ---
+@app.route('/download')
+def download_data():
+    """Скачивает данные в Excel"""
+    data_json = session.get('data')
+    if not data_json:
+        return redirect(url_for('index'))
+    
+    df = pd.read_json(data_json, orient='split')
+    
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        df.to_excel(writer, sheet_name='Расходы', index=False)
+    
+    output.seek(0)
+    return send_file(output, download_name='expenses_analysis.xlsx', as_attachment=True)
+
+
 if __name__ == '__main__':
-    print("=" * 50)
-    print("🚀 Запуск приложения для анализа расходов")
-    print("=" * 50)
-    print(f"📁 База данных: {app.config['DATABASE']}")
-    print(f"📁 Папка загрузок: {app.config['UPLOAD_FOLDER']}")
-    print("=" * 50)
-    print("🌐 Откройте в браузере: http://127.0.0.1:5000")
-    print("=" * 50)
-    
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    app.run(debug=True)
